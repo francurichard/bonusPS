@@ -1,14 +1,5 @@
 library(fpCompare) #pentru precizie la comparatii 
 
-decide_dependent <- function(){
-  rand = runif(1)
-  dependent = TRUE
-  if (1 - rand > rand) {
-    dependent = FALSE
-  }
-  return(dependent)
-}
-
 solve_element <- function(A, r, c, R, C) {
   # verific daca numarul elementelor de pe aceeasi linie este egal cu C - 3, unde C este numarul coloanelor repartitiei comune
   # daca da, inseamna ca elementul ca elementul se poate afla, folosind faptul ca suma elementelor de pe aceeasi linie este egala
@@ -47,87 +38,40 @@ solve_element <- function(A, r, c, R, C) {
 
 generate_random_joint_distribution <- function(n, m)
 {
-  x = c(sample(1:(2 * n), n, rep=FALSE))
-  y = c(sample(1:(2 * m), m, rep=FALSE))
+  x = c(sample(1:(10 * n), n, rep=FALSE))
+  y = c(sample(1:(10 * m), m, rep=FALSE))
   x = sort(x)
   y = sort(y)
-  p = c(runif(n, 1, 10 * n)) 
-  q = c(runif(m, 1, 10 * n))
-  sum_p = sum(p)
-  sum_q = sum(q)
-  normalised_p = c(p / sum_p)
-  normalised_q = c(q / sum_q)
-  normalised_p = c(floor(normalised_p * 1000) / 1000) # probabilitati doar cu 3 zecimale
-  normalised_q = c(floor(normalised_q * 1000) / 1000) # probabilitati doar cu 3 zecimale
-  # verific daca suma probabilitatilor este 1 in urma transformarii la 3 zecimale, daca nu adaug restul pana la 1 la prima valoare
-  if (sum(normalised_p) != 1.000) {
-    rest = 1.000 - sum(normalised_p)
-    normalised_p[1] = (normalised_p[1] + rest)
+  aux = matrix(sample(1:(n*m), n * m, replace = TRUE), nrow = n, ncol = m)
+  joint_distribution = matrix(0, nrow = n + 2, ncol = m + 2)
+  for (i in 1:n) {
+    joint_distribution[i + 1, 1] = x[i]
+    joint_distribution[i + 1, m + 2] = rowSums(aux)[i]
   }
-  if (sum(normalised_q) != 1.000) {
-    rest = 1.000 - sum(normalised_q)
-    normalised_q[1] = (normalised_q[1] + rest)
+  for (i in 1:m) {
+    joint_distribution[1, i + 1] = y[i]
+    joint_distribution[n + 2, i + 1] = colSums(aux)[i]
   }
-  x_variable = matrix(0, nrow = 2, ncol = n)
-  y_variable = matrix(0, nrow = 2, ncol = m)
-  
-  for (col in 1:ncol(x_variable)) {
-    x_variable[1, col] = x[col]
-    x_variable[2, col] = normalised_p[col]
+  for (i in 2:(n + 1)) {
+    for (j in 2:(m + 1)) {
+      joint_distribution[i, j] = aux[i - 1,j - 1]
+    }
   }
-  for (col in 1:ncol(y_variable)) {
-    y_variable[1, col] = y[col]
-    y_variable[2, col] = normalised_q[col]
+  for (i in 2:(n + 2)) {
+    for (j in 2:(m + 2)) {
+      joint_distribution[i, j] = joint_distribution[i, j] / sum(aux)
+    }
   }
-  
-  joint_distribution = matrix(0, nrow = (n + 2), ncol = (m + 2))
   colnames_joint_distribution = c(1:m)
   rownames_joint_distribution = c(1:n)
   for (i in 1:m) {
     colnames_joint_distribution[i] = paste(c("y", colnames_joint_distribution[i]), collapse = "", sep = "")
   }
   for (i in 1:n) {
-  rownames_joint_distribution[i] = paste(c("x", rownames_joint_distribution[i]), collapse = "", sep = "")
+    rownames_joint_distribution[i] = paste(c("x", rownames_joint_distribution[i]), collapse = "", sep = "")
   }
   rownames(joint_distribution) = c("Y", rownames_joint_distribution, "q")
   colnames(joint_distribution) = c("X", colnames_joint_distribution, "p")
-  for (col in 1:ncol(x_variable)) {
-    joint_distribution[col + 1, m + 2] = x_variable[2, col]
-    joint_distribution[col + 1, 1] = x_variable[1, col]
-  }
-  for (col in 1:ncol(y_variable)) {
-    joint_distribution[n + 2, col + 1] = y_variable[2, col]
-    joint_distribution[1, col + 1] = y_variable[1, col]
-  }
-  for (row in 2:(nrow(joint_distribution) - 1)) {
-    for (col in 2:(ncol(joint_distribution) - 1)) {
-      joint_distribution[row, col] = x_variable[2, row - 1] * y_variable[2, col - 1]
-    }
-  }
-  if (decide_dependent()) {
-    # aleg minimul dintre joint_distribution[2, 2]; [2, 3]; [3, 2]; [3, 3]
-    # scad din el jumate, jumate din el adaug in elementul de pe aceeasi linie 
-    # si coloana din acest patrat, si jumate din el scad de pe cel din diagonala
-    # astfel nu voi mai avea variabilele independente, produsul probabilitatilor p1 si q1
-    # va fi diferit de valoarea ce se afla corespunzatoare acestuia in repartitia comuna si anume [2, 2]
-    mini = 1
-    posx = 1
-    posy = 1
-    for (row in 2:3) {
-      for (col in 2:3) {
-        if (mini > joint_distribution[row, col]) {
-          mini = joint_distribution[row, col]
-          posx = row
-          posy = col
-        }  
-      }
-    }
-    half_of_mini = mini / 2
-    joint_distribution[posx, posy] = half_of_mini # elementul care contine minimul
-    joint_distribution[posx + ((-1) ^ posx), posy + ((-1) ^ posy)] = joint_distribution[posx + ((-1) ^ posx), posy + ((-1) ^ posy)] - half_of_mini # elementul de pe diagonala
-    joint_distribution[posx, posy + ((-1) ^ posy)] = joint_distribution[posx, posy + ((-1) ^ posy)] + half_of_mini # elementul de pe aceeasi linie
-    joint_distribution[posx + ((-1) ^ posx), posy] = joint_distribution[posx + ((-1) ^ posx), posy] + half_of_mini # elementul de pe aceeasi coloana 
-  }
   return(joint_distribution)
 }
 
@@ -147,7 +91,6 @@ erase_some_values <- function(joint_distribution)
 frepcomgen <- function(n, m)
 {
   joint_distribution = generate_random_joint_distribution(n, m)
-#  joint_distribution_table = as.table(joint_distribution)
   print("Repartitia comuna completa")
   print(joint_distribution)
   partial_joint_distribution = erase_some_values(joint_distribution = joint_distribution)
@@ -204,12 +147,6 @@ covariance_discrete_variables <- function(joint_distribution) {
   for (col in 2:(ncol(joint_distribution) - 1)) {
     mean_y = (joint_distribution[1, col] * joint_distribution[nrow(joint_distribution), col] + mean_y)
   }
-  print("Mean xy")
-  print(mean_xy)
-  print("Mean x")
-  print(mean_x)
-  print("Mean y")
-  print(mean_y)
   res = (mean_xy - (mean_x * mean_y) )
   return(res)
 }
@@ -231,11 +168,12 @@ fverind <- function(joint_distribution) {
     for (col in 2:(C - 1)) {
       if (joint_distribution[row, col] %!=% (joint_distribution[row, C] * joint_distribution[R, col])) {
           print("Variabilele sunt dependente")
+          return()
         }
       }
   }
   print("Variabilele sunt independente")
-  return(TRUE)
+  return()
 }
 
 fvernecor <- function(joint_distribution) {
@@ -308,5 +246,6 @@ completed_joint_distribution = fcomplrepcom(partial_joint_distribution)
 print("Repartitia comuna completata:")
 print(completed_joint_distribution)
 covariance_5x_3y(completed_joint_distribution)
+fverind(completed_joint_distribution)
 fvernecor(completed_joint_distribution)
 calcP(completed_joint_distribution)
