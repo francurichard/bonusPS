@@ -1,37 +1,159 @@
 library(fpCompare) #pentru precizie la comparatii 
 
+erase_elements <- function(joint_distribution) {
+  R = nrow(joint_distribution)
+  C = ncol(joint_distribution)
+  erase = matrix(TRUE, nrow = R + 1, ncol = C + 1)
+  for (i in 1:nrow(erase)) {
+    erase[i, 1] = FALSE
+    erase[i, ncol(erase)] = FALSE
+  }
+  for (i in 1:ncol(erase)) {
+    erase[1, i] = FALSE
+    erase[nrow(erase), i] = FALSE
+  }
+  ok = TRUE
+  posx = 2
+  posy = 2
+  d = 1 # 1 - merg in dreapta
+        # 2 - merg in jos
+        # 3 - merg in stanga
+        # 4 - merg in sus
+  while(ok) {
+    if (d == 1) {
+      if (erase[posx, posy + 1] == TRUE){ # daca e liber in dreapta merg
+        erase[posx, posy] = FALSE
+        posy = posy + 1
+      } else if (erase[posx + 1, posy] == TRUE) { # daca nu e liber in dreapta merg in jos
+        joint_distribution[posx, posy] = -1
+        d = 2
+      } else {
+        joint_distribution[posx, posy] = -1 # daca nu pot nici in jos atunci ma opresc
+        ok = FALSE
+      }
+    } else if (d == 2) {
+      if (erase[posx + 1, posy] == TRUE) {
+        erase[posx, posy] = FALSE
+        posx = posx + 1
+      } else if (erase[posx, posy - 1] == TRUE) {
+        joint_distribution[posx, posy] = -1
+        d = 3
+      } else {
+        joint_distribution[posx, posy] = -1
+        ok = FALSE
+      }
+    } else if (d == 3) {
+      if (erase[posx, posy - 1] == TRUE) {
+        erase[posx, posy] = FALSE
+        posy = posy - 1
+      } else if (erase[posx - 1, posy] == TRUE) {
+        joint_distribution[posx, posy] = -1
+        d = 4
+      } else {
+        joint_distribution[posx, posy] = -1
+        ok = FALSE
+      }
+    } else if (d == 4) {
+      if (erase[posx - 1, posy] == TRUE) {
+        erase[posx, posy] = FALSE
+        posx = posx - 1
+      } else if (erase[posx, posy + 1] == TRUE) {
+        joint_distribution[posx, posy] = -1
+        d = 1
+      } else {
+        joint_distribution[posx, posy] = -1
+        ok = FALSE
+      }
+    }
+  }
+  joint_distribution[R, C] = 0
+  return(joint_distribution)
+}
+
 solve_element <- function(A, r, c, R, C) {
   # verific daca numarul elementelor de pe aceeasi linie este egal cu C - 3, unde C este numarul coloanelor repartitiei comune
   # daca da, inseamna ca elementul ca elementul se poate afla, folosind faptul ca suma elementelor de pe aceeasi linie este egala
   # cu probabilitatea variabilei X corespunzatoare liniei respective
   # daca nu, atunci fac acelasi lucru si pe coloana 
   # daca nici acum nu am aflat elementul, returnez -1
-  no_elem_line = 0
-  sum_line = 0
-  no_elem_col = 0
-  sum_col = 0
-  for (col in 2:(C - 1)) {
-    if (A[r, col] != -1) {
-      no_elem_line = 1 + no_elem_line
-      sum_line = sum_line + A[r, col]
+  if (r != R && c != C)
+  {
+    no_elem_line = 0
+    sum_line = 0
+    no_elem_col = 0
+    sum_col = 0
+    for (col in 2:(C - 1)) {
+      if (A[r, col] != -1) {
+        no_elem_line = 1 + no_elem_line
+        sum_line = sum_line + A[r, col]
+      }
     }
-  }
-  if (no_elem_line == C - 3) {
-    ans = A[r, C] - sum_line
-    return(ans)
-  }
-  for (row in 2:(R - 1)) {
-    if (A[row, c] != -1) {
-      no_elem_col = 1 + no_elem_col
-      sum_col = sum_col + A[row, c]
+    if (no_elem_line == C - 3 && A[r, C] != -1) {
+      ans = A[r, C] - sum_line
+      return(ans)
     }
-  }
-  if (no_elem_col == R - 3) {
-    ans = A[R, c] - sum_col
-    return(ans)
+    for (row in 2:(R - 1)) {
+      if (A[row, c] != -1) {
+        no_elem_col = 1 + no_elem_col
+        sum_col = sum_col + A[row, c]
+      }
+    }
+    if (no_elem_col == R - 3 && A[R, c] != -1) {
+      ans = A[R, c] - sum_col
+      return(ans)
+    }
+  } else if (r == R) {
+    no_elem_line = 0
+    no_elem_col = 0
+    sum_line = 0
+    sum_col = 0
+    for (col in 2:C) {
+      if (A[r, col] != -1) {
+        no_elem_line = no_elem_line + 1
+        sum_line = sum_line + A[r, col]
+      }
+    }
+    if (no_elem_line == C - 2) {
+      ans = 1 - sum_line
+      return(ans)
+    }
+    for (row in 2:R) {
+      if (A[row, c] != -1) {
+        no_elem_col = no_elem_col + 1
+        sum_col = sum_col + A[row, c]
+      }
+    }
+    if (no_elem_col == R - 2) {
+      ans = sum_col
+      return(ans)
+    }
+  } else if (c == C) {
+    no_elem_line = 0
+    no_elem_col = 0
+    sum_line = 0
+    sum_col = 0
+    for (col in 2:C) {
+      if (A[r, col] != -1) {
+        no_elem_line = no_elem_line + 1
+        sum_line = sum_line + A[r, col]
+      }
+    }
+    if (no_elem_line == C - 2) {
+      ans = sum_line
+      return(ans)
+    }
+    for (row in 2:R) {
+      if (A[row, c] != -1) {
+        no_elem_col = no_elem_col + 1
+        sum_col = sum_col + A[row, c]
+      }
+    }
+    if (no_elem_col == R - 2) {
+      ans = 1 - sum_col
+      return(ans)
+    }
   }
   ans = -1
-  cov_x
   return(ans)
 }
 
@@ -62,6 +184,7 @@ generate_random_joint_distribution <- function(n, m)
       joint_distribution[i, j] = joint_distribution[i, j] / sum(aux)
     }
   }
+  
   colnames_joint_distribution = c(1:m)
   rownames_joint_distribution = c(1:n)
   for (i in 1:m) {
@@ -75,25 +198,12 @@ generate_random_joint_distribution <- function(n, m)
   return(joint_distribution)
 }
 
-erase_some_values <- function(joint_distribution) 
-{
-    # Voi sterge elementele de pe diagonala principala si primele doua elemente de pe prima linie
-    # pozitiile de pe care elementele au fost sterse sunt marcate cu -1
-    joint_distribution[2, 2] = -1
-    joint_distribution[2, 3] = -1
-    mini = min(nrow(joint_distribution), ncol(joint_distribution)) - 1
-    for (p in 3:mini) {
-      joint_distribution[p, p] = -1
-    }
-    return(joint_distribution)
-}
-
 frepcomgen <- function(n, m)
 {
   joint_distribution = generate_random_joint_distribution(n, m)
   print("Repartitia comuna completa")
   print(joint_distribution)
-  partial_joint_distribution = erase_some_values(joint_distribution = joint_distribution)
+  partial_joint_distribution = erase_elements(joint_distribution = joint_distribution)
   print("Repartitia comuna incompleta")
   print(partial_joint_distribution)
   return(partial_joint_distribution)
@@ -106,8 +216,8 @@ fcomplrepcom <- function(A)
   ok = TRUE
   while (ok == TRUE) {
     ok = FALSE
-    for (row in 2:(R - 1)) {
-      for (col in 2:(C - 1)) {
+    for (row in 2:R) {
+      for (col in 2:C) {
         if (A[row, col] == -1) {
           ans = solve_element(A, row, col, R, C)
           if (ans != -1) {
@@ -160,7 +270,6 @@ covariance_5x_3y <- function(joint_distribution)
 } 
 
 fverind <- function(joint_distribution) {
-  print(joint_distribution)
   R = nrow(joint_distribution)
   C = ncol(joint_distribution)
   
@@ -241,7 +350,7 @@ calcP <- function(joint_distribution) {
   print(res2)
 }
 
-partial_joint_distribution = frepcomgen(2,3)
+partial_joint_distribution = frepcomgen(4,3)
 completed_joint_distribution = fcomplrepcom(partial_joint_distribution)
 print("Repartitia comuna completata:")
 print(completed_joint_distribution)
